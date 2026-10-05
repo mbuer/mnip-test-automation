@@ -1,0 +1,7 @@
+switch:
+  host: 192.168.39.10
+  username: admin
+  password: admin
+
+trigger:
+  port: Ethernet1/25
