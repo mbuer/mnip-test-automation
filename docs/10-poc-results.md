@@ -1,80 +1,94 @@
-# Proof Of Concept Results
+# Proof-of-Concept Results
 
-## Date
+## Validation date
 
-2026-10-04
+October 4, 2026
 
 ## Objective
 
-Validate an end-to-end onboarding trigger using:
+Determine whether a portable Docker application could use an SN2410's LLDP information to discover an MN-IP device and trigger a factory reset through the device REST API.
 
-- NVIDIA SN2410
-- Docker
-- LLDP
-- MN-IP REST API
+## Environment
 
-## Findings
+- Linux Utility VM with Docker
+- NVIDIA/Mellanox SN2410 running Onyx
+- Riedel MN-IP FusioN device connected to Ethernet 1/25
+- Python 3.11 slim container
+- Paramiko, Requests, and PyYAML
 
-### Docker
+Sensitive credentials are intentionally not recorded.
 
-Verified:
+## Procedure and findings
 
-- Docker images built on Linux VM
-- Docker images exported using docker save
-- Images copied via SCP
-- Images loaded on SN2410
-- Containers executed successfully
+### 1. Build and VM execution
 
-### LLDP Discovery
+The image built successfully on the Utility VM. The application connected to the switch and initially exposed two Onyx-specific constraints:
 
-Verified command:
+- The account accepted CLI interaction, not remote UNIX shell commands.
+- The working Paramiko method required an interactive shell rather than `exec_command()`.
 
+### 2. LLDP discovery
+
+The application issued:
+
+```text
 show lldp interfaces ethernet 1/25 remote
+```
 
-Management address returned:
+The returned data contained remote system identity information and an IPv4 management address. The application successfully extracted that address.
 
-192.168.39.25
+### 3. Factory-reset action
 
-### REST API
+The application sent:
 
-Verified endpoint:
-
+```http
 PUT /emsfp/node/v1/self/system
+```
 
-Factory reset:
+with:
 
+```json
 {
   "config_reset": "system"
 }
+```
 
-Response:
+The observed response was HTTP 200:
 
+```json
 {
   "code": 200,
-  "info": "system rebooting"
+  "info": "system rebooting",
+  "debug": null
 }
+```
 
-### End-to-End Workflow
+The device rebooted as expected.
 
-SN2410 LLDP
+### 4. Switch-hosted execution
 
-↓
+The image was exported from the Utility VM, transferred to the switch, loaded into Onyx Docker, and started. The same workflow executed successfully from the SN2410. The completed container appeared as `Exited (0)`.
 
-Management IP extracted
-
-↓
-
-REST API Factory Reset
-
-↓
-
-Device reboot
-
-Successful.
+The operation succeeded, but feedback was not immediately visible through the Onyx Docker status view. This identified observability as a required feature rather than an optional refinement.
 
 ## Conclusion
 
-Technical feasibility has been proven.
+The PoC validated all critical assumptions for the initial architecture:
 
-The architecture is suitable for future onboarding, provisioning, validation and reporting workflows.
+- Onyx LLDP data is available to automation.
+- The advertised management address can remove the need for a hard-coded device IP.
+- An interactive SSH client can operate the Onyx CLI.
+- The MN-IP factory-reset endpoint works for the tested device and software.
+- A standard Docker image can run on both the Utility VM and SN2410.
 
+## What the PoC did not prove
+
+- Reliable unattended operation over long periods
+- Safe repeated processing of multiple devices
+- Post-reset readiness validation
+- Configuration or SDP provisioning
+- ST 2110 stream or video validation
+- Durable logs and reports
+- Support for other switch or device families
+
+These items remain roadmap work.
