@@ -19,52 +19,100 @@ Current implementation target:
 
 Future targets:
 
-- Additional Riedel products
+- Additional Riedel platforms
 - Netgear switches
 - Luminex switches
 
-## Long Term Workflow
+## End State
+
+Device Connected
+
+↓
 
 Discovery
-→ Identification
-→ Reset
-→ Provision
-→ Validation
-→ Reporting
+
+↓
+
+Identification
+
+↓
+
+Reset
+
+↓
+
+Provision
+
+↓
+
+Validation
+
+↓
+
+Monitoring
+
+↓
+
+Reporting
+
+## Proven End-To-End Workflow
+
+Validated on 2026-10-04.
+
+Workflow:
+
+SN2410 LLDP
+
+↓
+
+Management IP Extraction
+
+↓
+
+REST API Factory Reset
+
+↓
+
+Device Reboot
+
+Successful.
+
+Executed from:
+
+- Linux Docker
+- SN2410 Docker
+
+Same container image.
 
 ## Architectural Principles
 
 ### Discovery Layer
 
-Responsible for finding devices.
-
-Examples:
+Responsible for:
 
 - LLDP
 - Static Port Mapping
 - Future discovery methods
 
-Discovery returns device information.
-
-Automation must not depend on specific switch vendors.
+Returns device metadata.
 
 ### Device Layer
 
 Responsible for:
 
-- Factory Reset
+- Reset
 - Provisioning
 - Validation
 
-Uses device-specific APIs.
+Must remain independent from switch vendors.
 
 ### Reporting Layer
 
 Responsible for:
 
 - Logs
-- Test results
-- Future audit trails
+- Reports
+- Audit history
 
 ## Confirmed Technical Findings
 
@@ -72,10 +120,10 @@ Responsible for:
 
 Verified:
 
-- SCP upload works
-- Standard Docker images load successfully
-- Containers execute successfully
-- Same image runs on Linux VM and SN2410
+- SCP upload
+- Standard Docker image import
+- Container execution
+- Same image runs on VM and SN2410
 
 ### LLDP
 
@@ -87,9 +135,9 @@ Returns:
 
 - System Name
 - Chassis ID
-- Management IP Address
+- Management IP
 
-Management IP is directly usable for API operations.
+Management IP can be consumed directly by automation.
 
 ### MN-IP REST API
 
@@ -97,7 +145,7 @@ Verified:
 
 PUT /emsfp/node/v1/self/system
 
-Factory reset:
+Factory Reset:
 
 {
   "config_reset": "system"
@@ -109,44 +157,34 @@ Reboot:
   "reboot": "1"
 }
 
-### Proof Of Concept Success
-
-Workflow verified:
-
-LLDP Detection
-→ Management IP Extraction
-→ REST API Factory Reset
-
-Executed successfully from:
-
-- Linux Docker
-- NVIDIA Onyx Docker
-
 ## Static Port Strategy
 
-Current laboratory design uses fixed onboarding ports.
+Current preferred model:
+
+Static port assignment
+
++
+
+Dynamic LLDP metadata
 
 Example:
 
 Ethernet1/25
-→ Factory Reset
+→ Factory Reset Lane
 
 Future:
 
-Port mapping defined in configuration.
+Port layout defined in configuration.
 
-LLDP will enrich metadata but not replace static assignments.
-
-## Things Not Implemented Yet
+## Not Implemented Yet
 
 - Provisioning
+- Validation
 - Reporting
-- Device inventory
+- Inventory
 - Netgear support
 - Luminex support
-- Validation workflows
-- Long duration testing
-- Web UI
+- Overnight testing
 
 ## Development Philosophy
 
@@ -154,8 +192,8 @@ Build smallest working workflow first.
 
 Avoid over-engineering.
 
-Always maintain portability between:
+Preserve portability between:
 
 - Linux Docker
-- Switch Docker
+- Onyx Docker
 

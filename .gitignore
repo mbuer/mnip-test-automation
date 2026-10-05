@@ -1,0 +1,7 @@
+*.tar
+*.tar.gz
+*.tbz
+__pycache__/
+.env
+config.local.yaml
+

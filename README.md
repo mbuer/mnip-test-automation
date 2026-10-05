@@ -66,7 +66,7 @@ Validate
 
 Report
 
-Detailed architecture documentation:
+## Documentation
 
 - docs/00-executive-summary.md
 - docs/01-vision-and-scope.md
@@ -74,10 +74,11 @@ Detailed architecture documentation:
 - docs/03-onyx-integration.md
 - docs/04-mn-ip-api.md
 - docs/05-test-station-design.md
-- [Port Mapping Strategy](docs/06d
+- docs/06-port-mapping-strategy.md
 - docs/07-roadmap.md
-- [ocs/08-development-guide.md
-- [ocs/09-deployment.md
+- docs/08-development-guide.md
+- docs/09-deployment.md
+- docs/10-poc-results.md
 
 ## Design Goals
 
