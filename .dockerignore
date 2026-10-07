@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.tar
+.git/
+.gitignore
+app_v0.1_backup.py
+app_v0.2_working.py
+fix_factory_reset.sh
+fix_url.sh

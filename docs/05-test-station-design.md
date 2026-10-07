@@ -2,26 +2,31 @@
 
 ## Purpose
 
-The test station should provide predictable physical lanes, deterministic workflows, media sources and destinations, operator visibility, and a path to repeatable evidence.
+The test station should make a complex onboarding process feel physically obvious: each labeled lane has a known purpose, the automation discovers what is connected, and the resulting evidence distinguishes device failures from infrastructure failures.
 
-## Initial concept
+## Current validated lane
 
-An SN2410 acts as the central IP switch. A designated onboarding port connects to the device under test. Static port mapping determines which workflow is permitted on that lane, while LLDP identifies the attached device and supplies the management address.
+```text
+Ethernet 1/25 -> MN-IP factory-reset watcher
+```
 
-The intended MN-IP validation workflow will use ST 2110 senders as sources and provision four receiver definitions on a FusioN gateway. The resulting video should be visible on an appropriate confidence monitor or test display. Application and device status will eventually be collected for an operator-readable result.
+The lane remains statically assigned while the connected device identity and management address are learned dynamically through LLDP.
+
+A useful property of this design is that a returned or lab device may arrive with an address outside the station's normal management subnet. The switch can temporarily join that device's Layer 2 segment under a controlled recovery policy, perform the onboarding action, and remove the additional address afterward.
 
 ## Functional areas
 
 ```text
 Management and automation
-  - Utility VM or switch-hosted container
-  - Switch management
-  - Device management API
+  - Utility VM for development and image builds
+  - Onyx-hosted watcher for lane-local operation
+  - Switch and device credentials supplied outside Git
 
 Onboarding lane
   - Fixed physical port
-  - LLDP discovery
-  - Reset and configuration workflow
+  - Link and LLDP observation
+  - Temporary reachability recovery
+  - Reset and later configuration workflows
 
 Media generation
   - Known ST 2110 sender flows
@@ -29,37 +34,48 @@ Media generation
 
 Device under test
   - FusioN ST 2110 gateway
-  - Four configured receiver paths
+  - Four future receiver paths
 
 Validation
-  - Receiver state
-  - Expected media flow
+  - Device readiness
+  - Receiver state and expected flows
   - Video output or confidence display
-  - Long-duration health observations
+  - Long-duration observations
 
 Reporting
-  - Workflow events
-  - Device and test metadata
+  - Workflow and cleanup events
+  - Device/test metadata
   - Pass/fail outcome
-  - Diagnostic details
+  - Diagnostics and operator actions
 ```
 
-## Design principles
+## Human factors
 
-- Label physical ports and cables consistently with configuration names.
-- Keep management, media, and test-control assumptions documented.
-- Use known-good source streams and version-controlled non-secret test definitions.
-- Define pass/fail criteria before automating a validation.
-- Record enough evidence to distinguish infrastructure failures from device failures.
-- Make destructive lanes visually and operationally unambiguous.
+- Label destructive lanes unambiguously.
+- Display which workflow is armed before a device is connected.
+- Show when temporary switch configuration is active.
+- Make cleanup failure visible and require acknowledgement.
+- Provide a way to inhibit or maintenance-lock a lane.
+- Do not make an operator infer success solely from a reboot.
+
+## Network design considerations
+
+Temporary VLAN addressing is useful for onboarding, but it is not automatic address management. Before expanding beyond a controlled lab lane, define:
+
+- VLAN isolation and who else can be present in the broadcast domain;
+- acceptable prefix assumptions;
+- conflict-detection behavior;
+- prohibited address ranges;
+- how management and media VLANs are separated;
+- PTP and ST 2110 topology;
+- cleanup verification and escalation.
 
 ## Open design questions
 
-- Exact switchport allocation for senders, receivers, management, monitoring, and spare lanes
-- VLAN and PTP design for the final media-validation topology
-- Source of truth for SDP files
-- Method for confirming video output automatically
-- Required test duration and sampling frequency
-- Failure classification and report format
-
-These details should be added when the rough physical drawing and actual lab port plan are incorporated into the repository.
+- Final port allocation for senders, receivers, management, monitoring, and spares
+- Source of truth and versioning for SDP files
+- Automatic video-output confirmation method
+- Test duration and health-sampling frequency
+- Failure taxonomy and report format
+- Operator acknowledgement and lane maintenance controls
+- Number of concurrent lanes supported by switch and workflow state

@@ -1,94 +1,135 @@
-# Proof-of-Concept Results
+# Proof-of-Concept and Watcher Validation Results
 
-## Validation date
+## Milestone 1: one-shot feasibility
 
-October 4, 2026
+**Validation date:** October 4, 2026
 
-## Objective
+### Objective
 
-Determine whether a portable Docker application could use an SN2410's LLDP information to discover an MN-IP device and trigger a factory reset through the device REST API.
+Determine whether a portable Docker application could use SN2410 LLDP information to discover an MN-IP device and trigger factory reset through the device REST API.
 
-## Environment
+### Result
 
-- Linux Utility VM with Docker
-- NVIDIA/Mellanox SN2410 running Onyx
-- Riedel MN-IP FusioN device connected to Ethernet 1/25
-- Python 3.11 slim container
-- Paramiko, Requests, and PyYAML
+The image built on the Linux Utility VM, connected to Onyx through an interactive Paramiko shell, queried Ethernet 1/25, extracted the management IPv4 address, and sent the reset request. The device returned HTTP 200 with `system rebooting` and rebooted. The same image subsequently ran on the SN2410.
 
-Sensitive credentials are intentionally not recorded.
+### Key Onyx findings
 
-## Procedure and findings
+- The account was CLI-only and rejected remote UNIX commands.
+- `invoke_shell()` was required.
+- `terminal length 0` was invalid on the tested release.
+- One-shot containers remained registered after exit.
+- Application output was not conveniently exposed through basic container status.
 
-### 1. Build and VM execution
+## Milestone 2: unreachable-device recovery
 
-The image built successfully on the Utility VM. The application connected to the switch and initially exposed two Onyx-specific constraints:
+**Validation date:** October 6, 2026
 
-- The account accepted CLI interaction, not remote UNIX shell commands.
-- The working Paramiko method required an interactive shell rather than `exec_command()`.
+### Objective
 
-### 2. LLDP discovery
+Determine whether the station could reset a device that advertises its management address through LLDP but is not in the switch VLAN's current IP subnet.
 
-The application issued:
+### Initial condition
 
 ```text
-show lldp interfaces ethernet 1/25 remote
+Switch VLAN 1 primary: 192.168.39.10/24
+Device: 10.10.10.10/24
+LLDP: device identity and 10.10.10.10 visible
+Ping: failed
 ```
 
-The returned data contained remote system identity information and an IPv4 management address. The application successfully extracted that address.
+### Manual validation
 
-### 3. Factory-reset action
+Onyx accepted:
 
-The application sent:
-
-```http
-PUT /emsfp/node/v1/self/system
+```text
+interface vlan 1
+ip address 10.10.10.11/24
 ```
 
-with:
+After assignment, switch ping succeeded. After:
 
-```json
-{
-  "config_reset": "system"
-}
+```text
+no ip address 10.10.10.11/24
 ```
 
-The observed response was HTTP 200:
+ping failed again. This repeated add/remove sequence established clear cause and effect.
 
-```json
-{
-  "code": 200,
-  "info": "system rebooting",
-  "debug": null
-}
+### Automation lessons
+
+The first VM-hosted attempt restored switch reachability but the REST call still timed out because `requests.put()` ran from the Utility VM. This confirmed that temporary switch addressing does not alter the VM route.
+
+The successful workflow ran inside Docker on the SN2410:
+
+```text
+LLDP discovery
+-> switch-side ping failed
+-> enable
+-> configure terminal
+-> add temporary VLAN address
+-> switch-side ping succeeded
+-> container sent REST reset
+-> finally cleanup removed temporary address
 ```
 
-The device rebooted as expected.
+The device factory-reset successfully, and `show ip interface brief` confirmed cleanup.
 
-### 4. Switch-hosted execution
+## Milestone 3: persistent watcher and reset-cycle guard
 
-The image was exported from the Utility VM, transferred to the switch, loaded into Onyx Docker, and started. The same workflow executed successfully from the SN2410. The completed container appeared as `Exited (0)`.
+**Validation date:** October 6, 2026
 
-The operation succeeded, but feedback was not immediately visible through the Onyx Docker status view. This identified observability as a required feature rather than an optional refinement.
+### Objective
+
+Keep the container running, process a device automatically when connected, avoid repeated reset during reboot, and re-arm after actual removal.
+
+### Validated behavior
+
+- Watcher remained running while the port was empty.
+- Poll interval was configured at approximately 10 seconds.
+- Link Up was observed before LLDP was always ready; the watcher retried LLDP.
+- A newly connected device was processed automatically.
+- The watcher remained running after reset.
+- A simple immediate re-arm on link Down was identified as unsafe because reset may flap the link.
+- Re-arm was changed to require 60 seconds of continuous link Down.
+- The revised watcher processed a device configured at `172.20.50.100/24` using temporary `172.20.50.101/24`.
+- The device returned to its factory address and remained connected without another reset.
+- The port stayed Up for more than three minutes after the reset without a new operational transition.
+- The temporary address was absent after completion.
+
+### Result
+
+The v0.4 watcher prototype met the intended trigger semantics for the tested lane:
+
+```text
+wait -> discover -> recover reachability -> reset once -> cleanup
+     -> hold processed state -> re-arm after sustained removal
+```
+
+## What is now proven
+
+- LLDP discovery does not require Layer 3 reachability.
+- Onyx can hold an additional IPv4 address on an existing VLAN interface.
+- Controlled temporary adjacency can enable a short REST transaction to an otherwise unreachable device.
+- The REST call must execute from a network context that has the temporary path.
+- A switch-hosted Docker watcher can remain running and process device connection events.
+- Sustained-down re-arm protects against the tested reboot cycle.
+- Cleanup can return the switch VLAN to its original state after success.
+
+## What remains unproven or incomplete
+
+- General safety of `/24` and adjacent-address assumptions
+- Address-conflict detection
+- Prompt-aware SSH and robust CLI error handling
+- Cleanup behavior across process kill, switch reboot, or loss of management connectivity
+- Persisted lane state and restart recovery
+- Post-reset service readiness
+- Multiple lanes or simultaneous devices
+- Secure production credential injection
+- Structured logging and result retention
+- Configuration, SDP provisioning, ST 2110 validation, and video confirmation
+- Automated test coverage
 
 ## Conclusion
 
-The PoC validated all critical assumptions for the initial architecture:
+The project has moved from a one-shot feasibility script to a valuable onboarding prototype. A device can arrive on the designated lane with an unexpected management address, be discovered through LLDP, temporarily reached by the switch, reset from the switch-hosted container, and released without leaving the temporary address configured. The watcher can then remain active without repeatedly resetting the same rebooting device.
 
-- Onyx LLDP data is available to automation.
-- The advertised management address can remove the need for a hard-coded device IP.
-- An interactive SSH client can operate the Onyx CLI.
-- The MN-IP factory-reset endpoint works for the tested device and software.
-- A standard Docker image can run on both the Utility VM and SN2410.
-
-## What the PoC did not prove
-
-- Reliable unattended operation over long periods
-- Safe repeated processing of multiple devices
-- Post-reset readiness validation
-- Configuration or SDP provisioning
-- ST 2110 stream or video validation
-- Durable logs and reports
-- Support for other switch or device families
-
-These items remain roadmap work.
+The next work should harden this behavior rather than immediately adding more device operations.

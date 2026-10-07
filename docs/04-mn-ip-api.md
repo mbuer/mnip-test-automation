@@ -1,8 +1,8 @@
 # MN-IP API Notes
 
-## Status of this document
+## Status
 
-This file records behavior validated during the Phase 1 proof of concept. It is not a replacement for the official API documentation for a specific software release.
+This document records behavior validated against the tested FusioN software. It is not a substitute for the official API documentation for a specific release.
 
 ## Validated factory-reset action
 
@@ -27,29 +27,44 @@ Observed successful response:
 }
 ```
 
-Successful acceptance of the request does not by itself prove that the device completed reset and became ready. A complete workflow must monitor reachability and application readiness after the reboot.
+The reset was validated from an Onyx-hosted container after temporary reachability was established to devices using lab addresses in two different private subnets.
+
+## Request acceptance versus workflow success
+
+HTTP 200 proves that the tested API accepted the request. It does not prove that:
+
+- the reset completed;
+- the device returned to its factory address;
+- required services became ready;
+- the device is healthy; or
+- the broader onboarding workflow passed.
+
+Future workflow states must rediscover the device after reboot and verify readiness explicitly.
+
+## Address handling
+
+Do not hard-code a current device address. Use LLDP discovery, then perform a separate reachability assessment.
+
+The current prototype may temporarily configure an address on the switch VLAN to reach an otherwise isolated device. This is a switch/workflow responsibility, not part of the MN-IP device adapter. The device adapter should receive a reachable endpoint and return normalized action results.
 
 ## Safety requirements
 
-Factory reset is destructive. Before broadening deployment:
+Factory reset is destructive. Before production use:
 
-- Associate the action with an explicit port/workflow configuration.
-- Verify that the LLDP neighbor is eligible for the selected workflow.
-- Log the discovered identity and action request without logging secrets.
-- Prevent repeated resets while the same device remains connected.
-- Define action, reboot, and readiness timeouts.
-- Preserve a clear failure result when the response is missing or unexpected.
+- associate the action with an explicit, visibly labeled lane;
+- verify the discovered neighbor matches eligibility policy;
+- guard against duplicate action while the same device remains connected;
+- classify timeout, rejected response, reboot, readiness, and cleanup failures separately;
+- record identity and action metadata without secrets;
+- bound retries; and
+- require operator intervention when temporary network cleanup cannot be verified.
 
 ## Future device-adapter responsibilities
 
-- Product and firmware identification
-- Factory reset and reboot
-- Readiness and health checks
-- Configuration deployment
-- SDP receiver provisioning
-- Status retrieval for ST 2110 reception
-- Normalized errors for workflow and reporting layers
-
-## Configuration guidance
-
-Do not hard-code device addresses. The intended model is to discover the current management address through LLDP. Authentication data must be injected at runtime through an approved mechanism and must not be committed.
+- product, hardware, and firmware identification;
+- factory reset and controlled reboot;
+- post-reboot readiness and health;
+- baseline configuration deployment;
+- SDP receiver provisioning;
+- ST 2110 receiver status;
+- normalized errors and evidence for workflow/reporting layers.

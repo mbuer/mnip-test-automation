@@ -2,53 +2,69 @@
 
 ## Decision
 
-Use static physical port assignments to select a workflow and dynamic LLDP data to identify the connected device.
+Use static physical lanes to select workflows and dynamic LLDP data to identify the currently connected device.
 
 ```text
-Physical port -> intended lane/workflow
-LLDP          -> current device metadata and management address
+Physical port -> intended lane and allowed workflow
+LLDP          -> current device identity and management addresses
+Reachability  -> separate switch-side assessment and optional recovery
 ```
 
-For the Phase 1 proof of concept:
+The current validated lane is:
 
 ```text
-Ethernet 1/25 -> factory-reset lane
+Ethernet 1/25 -> MN-IP factory-reset watcher
 ```
 
-The lab address observed during testing is not a permanent property of the lane and must not be hard-coded as the device identity.
+## Why this model works
 
-## Why combine both methods
+A support engineer can reason about a labeled physical port more easily than an invisible dynamic rule. LLDP removes the need to know or maintain the device's current IP ahead of time. Separating reachability prevents the system from assuming that an advertised management address is usable.
 
-Static port mapping is easy for support engineers to understand and aligns automation with the physical test station. LLDP avoids maintaining a manual IP assignment for each device and provides useful identity metadata.
-
-## Recommended configuration model
+## Proposed configuration
 
 ```yaml
 lanes:
   factory-reset-1:
     switch: lab-switch-1
     port: ethernet-1/25
+    vlan: 1
     workflow: mnip-factory-reset
     allowed_device_families:
       - mn-ip
-    poll_interval_seconds: 5
+    poll_interval_seconds: 10
     discovery_timeout_seconds: 60
-    rearm_condition: neighbor-removed
+    rearm_down_seconds: 60
+    recovery:
+      enabled: true
+      assumed_prefix_length: 24
+      adjacent_address_policy: plus-one-except-254
 ```
 
-This is a proposed model, not an implemented schema.
+This documents current behavior but is not yet an implemented schema.
 
-## Trigger semantics
+## Current trigger semantics
 
-A link becoming active is not sufficient proof that LLDP data is ready. The service should:
+1. Poll physical link state.
+2. If link is Up, request LLDP.
+3. Retry when LLDP is not yet available.
+4. Parse and validate the neighbor.
+5. Process the lane only if it is not already marked processed.
+6. Test reachability from the switch.
+7. Establish temporary reachability when required.
+8. Run the workflow once.
+9. Keep the lane locked during and after reboot.
+10. Re-arm only after 60 seconds of continuous link-down.
 
-1. Detect link or poll LLDP.
-2. Wait for a complete eligible discovery record.
-3. De-bounce repeated observations.
-4. Run the configured workflow once.
-5. Keep the lane locked for the current device.
-6. Re-arm after neighbor removal or another explicitly configured condition.
+The 60-second timer is reset by any return to link Up. It was validated to prevent a reboot-related link transition from causing a repeated reset.
+
+## Identity and replacement
+
+Physical disconnect is currently the decisive replacement signal. Future versions should also compare chassis ID and other stable identity fields, but identity change must not silently bypass destructive-action guards.
+
+## Address-recovery caveat
+
+The adjacent-address algorithm is an intentionally small PoC mechanism, not a general subnet inference system. LLDP does not provide the prefix. Before scaling the lane model, add configurable policies, conflict checks, invalid-address rejection, and clear failure behavior.
 
 ## Normalization
 
-Vendor-specific port syntax such as `Eth1/25` and `Ethernet1/25` should normalize to one internal identifier. Display the original vendor form in diagnostics where useful.
+Normalize vendor-specific syntax such as `Eth1/25`, `Ethernet 1/25`, and `ethernet-1/25` internally. Preserve the vendor form in raw diagnostics where useful.

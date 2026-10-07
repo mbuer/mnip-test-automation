@@ -5,3 +5,20 @@ __pycache__/
 .env
 config.local.yaml
 
+
+# Local Python environment
+.venv/
+**/.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Local development backups
+*_backup.py
+*_working.py
+
+# Generated Docker artifacts
+*.tar
+
+# Local runtime configuration
+config/config.yaml
