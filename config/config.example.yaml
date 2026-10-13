@@ -3,5 +3,25 @@ switch:
   username: SWITCH_USERNAME
   password: SWITCH_PASSWORD
 
-trigger:
-  port: Ethernet1/25
+watcher:
+  poll_interval_seconds: 10
+  rearm_down_seconds: 60
+
+network:
+  vlan: 1
+  temporary_prefix_length: 24
+
+lanes:
+  - name: fusion-reset
+    enabled: true
+    port: "1/25"
+    expected_speed: "25G"
+    device_family: "fusion"
+    workflow: "factory_reset"
+
+  - name: muon-a10-reset
+    enabled: true
+    port: "1/13"
+    expected_speed: "10G"
+    device_family: "muon-a10"
+    workflow: "factory_reset"
