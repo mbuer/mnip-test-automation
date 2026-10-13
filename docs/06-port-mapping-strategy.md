@@ -68,3 +68,25 @@ The adjacent-address algorithm is an intentionally small PoC mechanism, not a ge
 ## Normalization
 
 Normalize vendor-specific syntax such as `Eth1/25`, `Ethernet 1/25`, and `ethernet-1/25` internally. Preserve the vendor form in raw diagnostics where useful.
+
+## Implemented v0.6 configuration
+
+The proposed lane model is now implemented as a list in runtime YAML. Each lane has a unique name and port, device family, expected speed, enabled flag, and workflow. The config loader rejects duplicate enabled names and ports. Lane state is independent, so processing or re-arming one lane does not alter the other.
+
+Current defaults:
+
+```yaml
+lanes:
+  - name: fusion-reset
+    enabled: true
+    port: "1/25"
+    expected_speed: "25G"
+    device_family: "fusion"
+    workflow: "factory_reset"
+  - name: muon-a10-reset
+    enabled: true
+    port: "1/13"
+    expected_speed: "10G"
+    device_family: "muon-a10"
+    workflow: "factory_reset"
+```

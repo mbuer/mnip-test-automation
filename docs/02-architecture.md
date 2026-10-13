@@ -190,3 +190,17 @@ Device-action failure must still trigger cleanup. Cleanup failure must override 
 - Separate request acceptance from device recovery and workflow success.
 - Preserve raw command output when it helps explain parsing or configuration failures.
 - Keep a lane locked until the configured re-arm condition is satisfied.
+
+## v0.6 implementation map
+
+```text
+config.py     -> runtime path selection and validated multi-lane config
+models.py     -> independent LaneState per configured lane
+switch.py     -> port-aware Onyx operations
+device.py     -> exact narrow factory-reset request
+watcher.py    -> polling, conflict guard, cleanup, processed/re-arm state
+configure.py  -> persistent interactive configuration writer
+app.py        -> composition and startup
+```
+
+The runtime configuration is stored at `/mnip-config/config.yaml` on a persistent Onyx Docker label. Both lanes share VLAN 1. Before reset, the watcher compares LLDP management addresses across active lanes; an identical address is treated as a conflict and the reset is skipped. This protects the shared VLAN from the simplest cross-lane ambiguity but is not general IP-address conflict detection.

@@ -68,3 +68,13 @@ Factory reset is destructive. Before production use:
 - SDP receiver provisioning;
 - ST 2110 receiver status;
 - normalized errors and evidence for workflow/reporting layers.
+
+## v0.6 narrow-request guarantee
+
+`src/mnip_test_automation/device.py` sends only:
+
+```json
+{"config_reset": "system"}
+```
+
+to `PUT /emsfp/node/v1/self/system`. `tests/test_device.py` verifies the exact URL, payload, timeout, and HTTP status handling. This operation is shared by the FusioN and MuoN A10 lane implementations. FusioN is validated; MuoN A10 must remain documented as implemented but hardware-unvalidated until the actual cycle succeeds.

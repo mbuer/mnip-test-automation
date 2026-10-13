@@ -133,3 +133,29 @@ wait -> discover -> recover reachability -> reset once -> cleanup
 The project has moved from a one-shot feasibility script to a valuable onboarding prototype. A device can arrive on the designated lane with an unexpected management address, be discovered through LLDP, temporarily reached by the switch, reset from the switch-hosted container, and released without leaving the temporary address configured. The watcher can then remain active without repeatedly resetting the same rebooting device.
 
 The next work should harden this behavior rather than immediately adding more device operations.
+
+## Milestone 4: v0.6 multi-lane and persistent configuration
+
+**Implementation and validation date:** October 12, 2026
+
+Implemented and unit-tested:
+
+- independent FusioN and MuoN A10 lane state;
+- configurable lane ports;
+- port-aware Onyx adapter;
+- exact narrow reset request;
+- shared-VLAN duplicate management-IP guard;
+- persistent `mnip-config` storage label;
+- interactive helper with hidden password entry; and
+- ten passing unit tests.
+
+Validated on the SN2410:
+
+- label mounted read/write at `/mnip-config`;
+- hold-mode helper container;
+- interactive `docker exec` configuration;
+- configuration persistence after helper removal;
+- watcher startup from the label; and
+- FusioN processing under the v0.6 multi-lane watcher.
+
+MuoN A10 uses the same implemented endpoint and payload but remains hardware-unvalidated in this record. Add the actual MuoN observations only after that test is completed.
