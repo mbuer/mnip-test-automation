@@ -318,7 +318,7 @@ show ip interface brief
 show ip interface brief
 ```
 
-MuoN A10 hardware validation must be recorded separately from FusioN validation. The shared endpoint and payload are implemented, but documentation should only claim MuoN validation after the actual hardware cycle succeeds.
+MuoN A10 factory reset has been validated repeatedly on Ethernet 1/13 at 10G using the same narrow endpoint and payload as FusioN.
 
 ## 13. Verify lane discovery manually
 

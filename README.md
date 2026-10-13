@@ -2,7 +2,7 @@
 
 Automated onboarding, provisioning, validation, and long-duration testing for Riedel MN-IP devices.
 
-> **Project status:** v0.6 implements a persistent multi-lane factory-reset watcher for a FusioN lane and a MuoN A10 lane on an NVIDIA/Mellanox SN2410 running Onyx. Runtime configuration is stored in a persistent Onyx Docker label and created with an interactive helper. The FusioN lane and end-to-end configuration workflow have been validated; MuoN A10 hardware validation is pending.
+> **Project status:** v0.6 implements a persistent multi-lane factory-reset watcher for a FusioN lane and a MuoN A10 lane on an NVIDIA/Mellanox SN2410 running Onyx. Runtime configuration is stored in a persistent Onyx Docker label and created with an interactive helper. The FusioN and MuoN A10 lanes, persistent configuration workflow, and factory-reset operation have been validated on the SN2410.
 
 ## Executive summary
 
@@ -136,7 +136,7 @@ This remains a validated prototype rather than a production service:
 - LLDP parsing is regex-based and assumes one useful IPv4 row.
 - Recovery currently assumes `/24` and derives an adjacent address. The device's actual prefix length is not learned from LLDP.
 - Duplicate LLDP management addresses across configured lanes are blocked, but general conflict detection for a derived temporary address is not implemented.
-- One switch and a shared VLAN are covered. FusioN is hardware-validated under v0.6; MuoN A10 hardware validation is pending.
+- One SN2410 and a shared VLAN are covered. FusioN and MuoN A10 factory-reset workflows are hardware-validated under v0.6.
 - Recovery after process or switch restart is not persisted.
 - Container-output retrieval on Onyx is still limited; unbuffered output helps but is not a complete logging solution.
 - Host-key verification, credential injection, error classification, and configuration safety require hardening.

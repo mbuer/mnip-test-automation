@@ -90,7 +90,7 @@ Validated on Onyx:
 - watcher starts from the persistent configuration label;
 - the FusioN lane successfully runs under the multi-lane watcher.
 
-MuoN A10 support is implemented using the identical endpoint and narrow payload, but do not claim hardware validation until an actual MuoN A10 reset cycle is completed and recorded.
+MuoN A10 factory reset was validated repeatedly on Ethernet 1/13 at 10G using the same endpoint, narrow payload, temporary-reachability workflow, cleanup, and independent lane state as FusioN.
 
 ## Exact factory-reset API contract
 
@@ -186,7 +186,7 @@ Do not place MN-IP REST logic in the switch adapter. Do not place Onyx CLI parsi
 - No structured operational log or supported log retrieval path.
 - No post-reset health/readiness verification.
 - `AutoAddPolicy` and password-based switch login remain prototype choices.
-- MuoN A10 hardware validation is pending.
+- MuoN A10 factory reset was validated repeatedly on Ethernet 1/13 at 10G using the same narrow REST request as FusioN.
 
 ## Required next steps
 

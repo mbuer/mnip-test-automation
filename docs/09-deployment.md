@@ -44,4 +44,4 @@ Do not delete `mnip-config` during a normal image upgrade. Stop/remove container
 
 ## Validation rule
 
-Validate one lane at a time after deployment. The FusioN lane is validated under v0.6. MuoN A10 support must not be marked validated until an actual MuoN A10 reset cycle and cleanup check complete successfully.
+Validate one lane at a time after deployment. The FusioN and MuoN A10 factory-reset lanes are hardware-validated under v0.6. MuoN A10 was validated repeatedly on Ethernet 1/13 at 10G using the same narrow reset request and cleanup workflow as FusioN.

@@ -29,4 +29,4 @@ Discover -> identify -> reset -> recover -> configure
 
 ## v0.6 update
 
-v0.6 extends the validated watcher into a tested multi-lane design. FusioN and MuoN A10 use separate configured switchports and independent lane state while sharing the existing VLAN 1 recovery mechanism. Runtime configuration and credentials are no longer baked into the Docker image; they are written interactively to a persistent Onyx Docker label. The FusioN lane and configuration workflow have been exercised on the switch. MuoN A10 hardware validation remains pending and must not be presented as complete until recorded.
+v0.6 extends the validated watcher into a tested multi-lane design. FusioN and MuoN A10 use separate configured switchports and independent lane state while sharing the existing VLAN 1 recovery mechanism. Runtime configuration and credentials are no longer baked into the Docker image; they are written interactively to a persistent Onyx Docker label. The FusioN and MuoN A10 lanes have both been exercised successfully on the switch. MuoN A10 factory reset was validated repeatedly on Ethernet 1/13 at 10G.

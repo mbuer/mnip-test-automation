@@ -97,6 +97,6 @@ Do not skip Phase 2C because the prototype works. A destructive automation servi
 - Duplicate management-IP guard
 - Ten unit tests
 - FusioN lane validation completed
-- MuoN A10 hardware validation pending
+- MuoN A10 factory-reset workflow validated repeatedly on Ethernet 1/13 at 10G
 
-The next release decision should wait for MuoN A10 validation and documentation of the observed result.
+The FusioN and MuoN A10 factory-reset release gates are complete. Remaining work concerns hardening, observability, readiness checks, and later provisioning workflows.

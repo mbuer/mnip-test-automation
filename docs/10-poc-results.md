@@ -158,4 +158,4 @@ Validated on the SN2410:
 - watcher startup from the label; and
 - FusioN processing under the v0.6 multi-lane watcher.
 
-MuoN A10 uses the same implemented endpoint and payload but remains hardware-unvalidated in this record. Add the actual MuoN observations only after that test is completed.
+MuoN A10 factory reset was validated repeatedly on Ethernet 1/13 at 10G. The device used the same narrow endpoint and payload as FusioN, and the watcher retained independent lane state and cleanup behavior.
