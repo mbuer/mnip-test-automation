@@ -1,100 +1,47 @@
 # Deployment
 
-## Security notice
+## Primary runbook
 
-Do not bake credentials into the image or commit them to Git. The current PoC configuration model is temporary and must be replaced with runtime secret injection before production use.
+Use [v0.6 Deployment Runbook](11-deployment-runbook.md) for the complete copy/paste procedure from Windows PowerShell through image transfer, Onyx configuration, helper execution, watcher startup, verification, reconfiguration, rollback, and cleanup.
 
-## Build on the Utility VM
+## Required Onyx prompt
+
+Unless a step explicitly says otherwise, run project Docker/image commands at the Onyx `(config) #` prompt. Reach it with:
+
+```text
+enable
+configure terminal
+```
+
+If the prompt is `(config docker) #`, run `exit` once before entering a command beginning with `docker`.
+
+## Deployment model
+
+- Build on the Linux Utility VM.
+- Export a standard Docker TAR.
+- Transfer the TAR to Onyx image storage.
+- Load the image from `(config) #`.
+- Store runtime configuration in the persistent `mnip-config` Docker label.
+- Use a hold-mode helper container to run `mnip-configure`.
+- Remove the helper and start the watcher with the same label.
+
+## Security
+
+The image contains only `config/config.example.yaml`. Real credentials are entered interactively and stored in `/mnip-config/config.yaml` on the Onyx label. Never commit the runtime config or include it in the Docker image. The label contains sensitive data and must be protected and deleted deliberately when decommissioning.
+
+## Build and export
 
 ```bash
-docker build -t mnip-test-automation:VERSION .
+docker build -f docker/Dockerfile -t mnip-test-automation:v0.6 .
+docker save -o mnip-test-automation-v0.6.tar mnip-test-automation:v0.6
 ```
 
-Use `.dockerignore` so virtual environments, TAR exports, Git metadata, caches, and backups are not copied into the build context.
+The archive is generated and Git-ignored. The validated optimized archive is approximately 58 MB.
 
-Set unbuffered Python output in the image:
+## Upgrade rule
 
-```dockerfile
-ENV PYTHONUNBUFFERED=1
-```
+Do not delete `mnip-config` during a normal image upgrade. Stop/remove containers, replace the loaded image, then start the new watcher with the existing label.
 
-## Export
+## Validation rule
 
-```bash
-docker save -o mnip-test-automation-VERSION.tar mnip-test-automation:VERSION
-```
-
-The TAR is a generated deployment artifact and must remain ignored by Git.
-
-## Transfer
-
-Use the approved management transfer path. In the validated lab flow, the archive was copied to the Onyx image storage used by `docker load`.
-
-Do not assume the CLI account can browse or delete files through SFTP. Do not change switch filesystem permissions for convenience.
-
-## Load on Onyx
-
-At the Onyx configuration prompt:
-
-```text
-docker
-load mnip-test-automation-VERSION.tar
-```
-
-## Start for validation
-
-```text
-start mnip-test-automation VERSION unique-container-name now
-```
-
-`now` starts the watcher immediately but does not configure boot-time restart. Use this mode until the specific image and workflow behavior are validated.
-
-A later persistent policy such as `now-and-init` should only be enabled after restart behavior, state recovery, and logging are defined.
-
-## Verify status
-
-Use the supported Onyx `show docker container <name>` command and verify `status: running` for the watcher.
-
-Status alone does not prove a workflow succeeded. During current validation, operators also observed:
-
-- link operational state;
-- LLDP neighbor and current management address;
-- brief appearance and removal of the temporary VLAN address;
-- device reboot and return to factory addressing; and
-- continued watcher runtime.
-
-## Stop and remove container configuration
-
-Enter Docker configuration mode and use the supported `no start <container-name>` flow.
-
-## Remove loaded image
-
-From configuration mode:
-
-```text
-docker remove image mnip-test-automation VERSION
-```
-
-## Remove stored TAR archive
-
-```text
-image delete mnip-test-automation-VERSION.tar
-```
-
-Loaded Docker images and stored archives are separate. Removing one does not remove the other.
-
-## Runtime networking requirement
-
-For arbitrary-subnet recovery, run the REST action from the switch-hosted container. Adding an address to the switch VLAN does not give the Utility VM an equivalent path.
-
-## Offline operation
-
-The switch does not need Internet access at runtime. Dependencies are installed during image build and included in the archive.
-
-## Rollback
-
-- Keep the last known-good image and source tag.
-- Start new versions with `now` and a unique name.
-- Do not overwrite known-good tags.
-- Preserve diagnostics before removal.
-- Verify that temporary VLAN addresses are absent after any failed test.
+Validate one lane at a time after deployment. The FusioN lane is validated under v0.6. MuoN A10 support must not be marked validated until an actual MuoN A10 reset cycle and cleanup check complete successfully.

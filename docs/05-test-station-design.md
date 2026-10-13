@@ -79,3 +79,14 @@ Temporary VLAN addressing is useful for onboarding, but it is not automatic addr
 - Failure taxonomy and report format
 - Operator acknowledgement and lane maintenance controls
 - Number of concurrent lanes supported by switch and workflow state
+
+## v0.6 lane model
+
+Default lanes:
+
+```text
+Ethernet 1/25 -> FusioN factory reset, expected 25G
+Ethernet 1/13 -> MuoN A10 factory reset, expected 10G
+```
+
+The ports are editable through `mnip-configure`. Both ports are expected to be preconfigured as access ports in VLAN 1. Speed values are operator guidance only in v0.6. Devices connected at the same time must not share a management IP.

@@ -26,3 +26,7 @@ Discover -> identify -> reset -> recover -> configure
          -> provision four SDP receivers -> validate ST 2110 and video
          -> monitor -> report
 ```
+
+## v0.6 update
+
+v0.6 extends the validated watcher into a tested multi-lane design. FusioN and MuoN A10 use separate configured switchports and independent lane state while sharing the existing VLAN 1 recovery mechanism. Runtime configuration and credentials are no longer baked into the Docker image; they are written interactively to a persistent Onyx Docker label. The FusioN lane and configuration workflow have been exercised on the switch. MuoN A10 hardware validation remains pending and must not be presented as complete until recorded.

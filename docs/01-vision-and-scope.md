@@ -72,3 +72,18 @@ The persistent-watcher milestone required the service to:
 That milestone was validated on October 6, 2026.
 
 The next milestone succeeds when the current behavior is refactored into tested components with prompt-aware Onyx interaction, conflict-safe temporary addressing, durable events, and post-reset readiness verification.
+
+## v0.6 scope
+
+Implemented in v0.6:
+
+- Two enabled lane types: FusioN and MuoN A10
+- Configurable switchport per lane
+- Independent lane state and 60-second re-arm timer
+- Exact shared narrow factory-reset API operation
+- Persistent runtime configuration through the `mnip-config` Onyx Docker label
+- Interactive helper with hidden password entry
+- Shared-VLAN duplicate management-IP guard
+- Ten unit tests
+
+The current lab assumptions remain intentionally simple: VLAN 1, `/24` temporary recovery, 10-second polling, FusioN expected 25G, and MuoN A10 expected 10G. Port speed is prepared by the operator and is not configured or validated by v0.6.

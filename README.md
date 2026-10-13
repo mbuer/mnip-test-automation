@@ -2,7 +2,7 @@
 
 Automated onboarding, provisioning, validation, and long-duration testing for Riedel MN-IP devices.
 
-> **Project status:** A persistent factory-reset watcher was validated on October 6, 2026, using a Riedel MN-IP FusioN device and an NVIDIA/Mellanox SN2410 running Onyx. The watcher discovers a device through LLDP, establishes temporary Layer 3 reachability when necessary, performs the reset once, removes its temporary address, and remains active for the next device. Provisioning, media validation, reporting, and production hardening remain future work.
+> **Project status:** v0.6 implements a persistent multi-lane factory-reset watcher for a FusioN lane and a MuoN A10 lane on an NVIDIA/Mellanox SN2410 running Onyx. Runtime configuration is stored in a persistent Onyx Docker label and created with an interactive helper. The FusioN lane and end-to-end configuration workflow have been validated; MuoN A10 hardware validation is pending.
 
 ## Executive summary
 
@@ -115,7 +115,8 @@ Example addresses above are lab observations, not product defaults.
 The current prototype can:
 
 - remain active as a background watcher;
-- poll Ethernet 1/25 approximately every 10 seconds;
+- monitor independently configured FusioN and MuoN A10 lanes;
+- poll each enabled lane approximately every 10 seconds;
 - distinguish physical link state from LLDP readiness;
 - discover an MN-IP device's management IPv4 address through LLDP;
 - test reachability from the switch;
@@ -134,8 +135,8 @@ This remains a validated prototype rather than a production service:
 - The watcher uses fixed sleeps and opens multiple SSH sessions instead of maintaining a prompt-aware session.
 - LLDP parsing is regex-based and assumes one useful IPv4 row.
 - Recovery currently assumes `/24` and derives an adjacent address. The device's actual prefix length is not learned from LLDP.
-- The derived address is not yet checked for conflicts before assignment.
-- Only one switch, VLAN, lane, and tested MN-IP device family are covered.
+- Duplicate LLDP management addresses across configured lanes are blocked, but general conflict detection for a derived temporary address is not implemented.
+- One switch and a shared VLAN are covered. FusioN is hardware-validated under v0.6; MuoN A10 hardware validation is pending.
 - Recovery after process or switch restart is not persisted.
 - Container-output retrieval on Onyx is still limited; unbuffered output helps but is not a complete logging solution.
 - Host-key verification, credential injection, error classification, and configuration safety require hardening.
@@ -179,7 +180,8 @@ The next structural improvement should migrate active code into a conventional `
 - [Port-mapping strategy](docs/06-port-mapping-strategy.md): lane semantics, dynamic discovery, and re-arm policy
 - [Roadmap](docs/07-roadmap.md): completed and upcoming phases
 - [Development guide](docs/08-development-guide.md): engineering, testing, secrets, and repository hygiene
-- [Deployment guide](docs/09-deployment.md): build, export, Onyx load/start/remove, and artifact cleanup
+- [Deployment guide](docs/09-deployment.md): deployment model, configuration storage, and lifecycle
+- [v0.6 deployment runbook](docs/11-deployment-runbook.md): Windows PowerShell transfer and copy/paste Onyx commands
 - [Proof-of-concept results](docs/10-poc-results.md): dated validation record for both milestones
 - [Agent context](AGENT.md): precise durable instructions for future AI agents and collaborators
 
@@ -200,3 +202,14 @@ Only after that foundation is dependable should the project proceed to baseline 
 ## Security
 
 Never commit switch or device passwords, API tokens, private keys, local `.env` files, generated Docker archives, or logs containing sensitive environment details. `AutoAddPolicy` and locally stored credentials were expedient PoC choices and must not be treated as production defaults.
+
+## v0.6 highlights
+
+- FusioN and MuoN A10 lanes use independently configured switchports and independent processed/re-arm state.
+- Both families use the exact narrow reset request `{"config_reset": "system"}` at `/emsfp/node/v1/self/system`.
+- Runtime credentials and lane configuration are stored in the persistent `mnip-config` Onyx Docker label, not in the image.
+- The interactive helper displays all fixed settings and accepts the switch/VLAN IP, credentials, and both lane ports.
+- A shared-VLAN duplicate management-IP guard skips factory reset when two active lanes advertise the same IP.
+- Ten unit tests cover the reset request, configuration, port-aware switch adapter, independent lane state, re-arm behavior, and duplicate-IP guard.
+
+For deployment, follow [the v0.6 step-by-step runbook](docs/11-deployment-runbook.md).

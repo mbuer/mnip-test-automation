@@ -113,3 +113,19 @@ Deleting a secret or generated binary in a later commit does not remove it from 
 ## Versioning
 
 Preserve the historical one-shot implementation and tag validated milestones. Do not create a new source directory for every prototype version. Migrate active code into `src/` and use Git tags/releases once the next refactor begins.
+
+## Current automated tests
+
+Run from the repository root with the virtual environment active:
+
+```bash
+PYTHONPATH=src python -m pytest -q
+```
+
+The current suite contains 10 tests for the exact device reset request, temporary-address derivation, port-aware Onyx commands, independent lane state, re-arm behavior, and duplicate management-IP handling.
+
+Build v0.6 with:
+
+```bash
+docker build -f docker/Dockerfile -t mnip-test-automation:v0.6 .
+```

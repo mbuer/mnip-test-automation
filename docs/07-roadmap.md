@@ -84,3 +84,19 @@
 ## Roadmap rule
 
 Do not skip Phase 2C because the prototype works. A destructive automation service must make retries, cleanup, state, secrets, and observability more dependable than the manual process it replaces.
+
+## Phase 2D: Multi-lane watcher and persistent configuration
+
+**Status: implemented and partially hardware-validated October 12, 2026**
+
+- Independent FusioN and MuoN A10 lanes
+- Configurable ports
+- Exact shared narrow reset request
+- Persistent Onyx label configuration
+- Interactive configuration helper
+- Duplicate management-IP guard
+- Ten unit tests
+- FusioN lane validation completed
+- MuoN A10 hardware validation pending
+
+The next release decision should wait for MuoN A10 validation and documentation of the observed result.

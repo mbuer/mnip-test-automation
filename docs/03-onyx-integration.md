@@ -183,3 +183,19 @@ local backups
 `PYTHONUNBUFFERED=1` ensures prompt Python output, but Onyx status output does not by itself provide a convenient application log view. Until a supported log path is implemented, operators may need to infer progress from link state, LLDP, temporary VLAN addresses, device reboot, and container status.
 
 The target solution should use an Onyx-supported logging facility, remote syslog, structured result endpoint, or another validated persistent path.
+
+## v0.6 persistent configuration
+
+Validated Onyx mechanism:
+
+```text
+Docker label: mnip-config
+Container mount: /mnip-config
+Runtime file: /mnip-config/config.yaml
+```
+
+A helper container runs with `MNIP_MODE=hold`. From the `(config) #` prompt, `docker exec mnip-config-helper mnip-configure` launches the interactive writer. The password is entered through `getpass` and is not echoed. Removing the helper container does not remove the label or configuration.
+
+## Required CLI prompt
+
+Most project commands beginning with `docker`, plus `show docker`, `image delete`, and image lifecycle operations, are entered from `(config) #`. The `no start <container>` operation is entered after `docker` at `(config docker) #`; run `exit` afterward. This prompt distinction must be included in every operational guide.
