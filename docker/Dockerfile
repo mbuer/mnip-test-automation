@@ -16,4 +16,7 @@ COPY config/config.example.yaml /app/config.example.yaml
 COPY docker/entrypoint.sh /usr/local/bin/mnip-entrypoint
 RUN chmod +x /usr/local/bin/mnip-entrypoint
 
+COPY docker/mnip-configure /usr/local/bin/mnip-configure
+RUN chmod +x /usr/local/bin/mnip-configure
+
 ENTRYPOINT ["/usr/local/bin/mnip-entrypoint"]
