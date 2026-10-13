@@ -65,7 +65,10 @@ def test_lanes_have_independent_runtime_state():
 def test_processing_muon_does_not_mark_fusion_processed():
     switch = Mock()
     switch.port_is_up.return_value = True
-    switch.get_lldp_ip.return_value = "172.20.50.100"
+    switch.get_lldp_ip.side_effect = [
+        "172.20.50.100",
+        "192.168.39.230",
+    ]
     switch.is_reachable.return_value = True
 
     reset_device = Mock()
@@ -83,8 +86,14 @@ def test_processing_muon_does_not_mark_fusion_processed():
     assert fusion_lane.processed is False
     assert muon_lane.processed is True
 
-    switch.port_is_up.assert_called_once_with("1/13")
-    switch.get_lldp_ip.assert_called_once_with("1/13")
+    assert switch.port_is_up.call_args_list == [
+        (("1/13",),),
+        (("1/25",),),
+    ]
+    assert switch.get_lldp_ip.call_args_list == [
+        (("1/13",),),
+        (("1/25",),),
+    ]
     reset_device.assert_called_once_with("172.20.50.100")
 
 
@@ -129,3 +138,25 @@ def test_sustained_link_drop_rearms_only_selected_lane():
 
     assert fusion_lane.processed is False
     assert muon_lane.processed is True
+
+
+def test_duplicate_ip_on_shared_vlan_skips_reset():
+    switch = Mock()
+    switch.port_is_up.return_value = True
+    switch.get_lldp_ip.return_value = "10.10.10.10"
+    switch.is_reachable.return_value = True
+
+    reset_device = Mock()
+
+    watcher = MultiLaneWatcher(
+        config=make_config(),
+        switch=switch,
+        reset_device=reset_device,
+    )
+
+    fusion_lane = watcher.lanes[0]
+
+    watcher.process_lane(fusion_lane, now=100.0)
+
+    assert fusion_lane.processed is False
+    reset_device.assert_not_called()

@@ -22,6 +22,27 @@ class MultiLaneWatcher:
             for lane in config.lanes
         ]
 
+    def find_ip_conflict(
+        self,
+        current_lane: LaneState,
+        discovered_ip: str,
+    ) -> LaneState | None:
+        for other_lane in self.lanes:
+            if other_lane is current_lane:
+                continue
+
+            other_port = other_lane.config.port
+
+            if not self.switch.port_is_up(other_port):
+                continue
+
+            other_ip = self.switch.get_lldp_ip(other_port)
+
+            if other_ip == discovered_ip:
+                return other_lane
+
+        return None
+
     def process_lane(
         self,
         lane: LaneState,
@@ -67,6 +88,18 @@ class MultiLaneWatcher:
             f"[{name}] Found {lane.config.device_family} "
             f"device at {ip}."
         )
+
+        conflicting_lane = self.find_ip_conflict(lane, ip)
+
+        if conflicting_lane:
+            print(
+                f"[{name}] Shared-VLAN IP conflict: "
+                f"{ip} is also advertised on "
+                f"{conflicting_lane.config.name} "
+                f"({conflicting_lane.config.port}). "
+                "Skipping factory reset."
+            )
+            return
 
         cleanup_ip = None
 
