@@ -3,7 +3,6 @@ import time
 import requests
 import paramiko
 import yaml
-import subprocess
 from ipaddress import IPv4Address
 
 cfg = yaml.safe_load(open("config.yaml"))
