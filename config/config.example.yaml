@@ -1,5 +1,7 @@
 switch:
-  host: SWITCH_IP_OR_HOSTNAME
+  # Example only. Enter the actual switch VLAN IP.
+  # The switch VLAN IP must be within 192.168.39.0/24.
+  host: 192.168.39.10
   username: SWITCH_USERNAME
   password: SWITCH_PASSWORD
 
@@ -12,16 +14,26 @@ network:
   temporary_prefix_length: 24
 
 lanes:
-  - name: fusion-reset
+  # Example port only.
+  - name: fusion-25g-reset
     enabled: true
-    port: "1/25"
+    port: "1/1"
     expected_speed: "25G"
     device_family: "fusion"
     workflow: "factory_reset"
 
+  # Example port only.
+  - name: fusion-10g-reset
+    enabled: true
+    port: "1/3"
+    expected_speed: "10G"
+    device_family: "fusion"
+    workflow: "factory_reset"
+
+  # Example port only.
   - name: muon-a10-reset
     enabled: true
-    port: "1/13"
+    port: "1/5"
     expected_speed: "10G"
     device_family: "muon-a10"
     workflow: "factory_reset"
