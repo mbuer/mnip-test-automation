@@ -1,98 +1,38 @@
 # AGENT.md
 
-## Purpose
+## Read first
 
-Durable operating context for AI agents and human collaborators working on MNIP Test Automation. Read this file, `README.md`, and the relevant focused document under `docs/` before changing code, architecture, deployment, or validated claims.
+This file is durable context for future AI agents and contributors. Also read `README.md` and the focused document relevant to the task. Keep answers short and step-by-step during technical walkthroughs.
 
-Keep this file concise and factual. Human explanation belongs in the README and focused documents. Update this file whenever a validated finding changes an architectural assumption.
+## Current release state
 
-## Project identity
+- Branch under development: `feature/v1.0-production`
+- Current candidate: `v1.0-rc1`
+- Runtime: Docker on NVIDIA/Mellanox SN2410 running Onyx
+- Validated switch OS: Onyx `X86_64 3.10.4100`; deployment requires `docker start ... user-env` support.
+- Deployment scope: controlled Riedel lab/test-station environment
+- Shared access network: VLAN 1
+- Required switch VLAN subnet: `192.168.39.0/24`
+- Example switch VLAN IP only: `192.168.39.10`
+- Example ports only:
+  - FusioN 25G: `1/1`
+  - FusioN 10G: `1/3`
+  - MuoN A10 10G: `1/5`
+- LED indication work is deferred.
 
-- Repository: `https://github.com/mbuer/mnip-test-automation`
-- Mission: automate onboarding, provisioning, validation, and long-duration testing of Riedel MN-IP devices.
-- Switch platform: NVIDIA/Mellanox SN2410 running Onyx.
-- Development platform: Linux Utility VM with Docker.
-- Runtime: Onyx Docker.
-- Current release candidate: v0.6 multi-lane factory-reset watcher.
-- Current device lanes:
-  - FusioN, default Ethernet `1/25`, expected 25G.
-  - MuoN A10, default Ethernet `1/13`, expected 10G.
-- Shared access network: VLAN 1 in the current lab design.
+## Lane behavior
 
-Factory reset is the first proven device action, not the final purpose of the framework.
+Three independently configured lanes are implemented:
 
-## User priorities
+1. FusioN, expected 25G
+2. FusioN, expected 10G
+3. MuoN A10, expected 10G
 
-1. Keep answers and technical walkthroughs short and step-by-step.
-2. Keep repository documentation synchronized with validated findings.
-3. Write human-facing documents for support engineers; keep this file efficient for future agents.
-4. Clearly distinguish validated behavior, implemented-but-unvalidated behavior, and future work.
-5. Never commit credentials, local runtime configuration, Docker TAR files, virtual environments, keys, or logs with sensitive details.
-6. Prefer small tested changes over speculative framework code.
-7. In Onyx instructions, always state the required CLI prompt. Most Docker/image/show commands in this project are executed from `(config) #`; `no start` is entered after `docker` at `(config docker) #`.
+Port values are operator-entered. Expected speed is informational; v1.0 does not configure or validate speed.
 
-## Intended end state
+Each lane has independent processed state and link-down timer. A processed lane re-arms only after 60 seconds continuously down.
 
-```text
-Connect device
-  -> discover and identify
-  -> establish reachability when required
-  -> reset to a known state
-  -> wait for recovery
-  -> configure
-  -> provision four receiver SDP definitions
-  -> validate ST 2110 reception and expected video output
-  -> monitor for hours or days
-  -> create logs and a pass/fail result
-```
-
-## Validated milestones
-
-### October 4, 2026: one-shot feasibility
-
-- Built the Python Docker image on the Utility VM.
-- Queried Onyx LLDP on Ethernet 1/25 through `invoke_shell()`.
-- Extracted the MN-IP management IPv4 address.
-- Sent the factory-reset request and observed HTTP 200 with `system rebooting`.
-- Ran the same image on the SN2410.
-
-### October 6, 2026: persistent single-lane watcher
-
-- Proved LLDP discovery is independent of Layer 3 reachability.
-- Added and removed an additional IPv4 address on VLAN 1.
-- Reached devices on arbitrary lab subnets and reset them from the switch-hosted container.
-- Added 10-second polling and a 60-second continuous-down re-arm guard.
-- Validated cleanup and prevention of reboot-induced reset cycles.
-
-### October 12, 2026: v0.6 multi-lane implementation and deployment workflow
-
-Implemented and unit-tested:
-
-- typed multi-lane configuration;
-- independent lane runtime state;
-- port-aware Onyx adapter;
-- exact narrow factory-reset request;
-- shared watcher for FusioN and MuoN A10;
-- duplicate management-IP guard across the shared VLAN;
-- persistent Onyx configuration stored in a Docker label;
-- interactive `mnip-configure` helper;
-- helper hold mode started with `MNIP_MODE=hold`;
-- secret-safe Docker image that does not contain local credentials;
-- 10 passing unit tests;
-- final Docker TAR remains approximately 58 MB.
-
-Validated on Onyx:
-
-- `mnip-config` label mounts read/write at `/mnip-config`;
-- helper container remains running in hold mode;
-- `docker exec mnip-config-helper mnip-configure` supports interactive prompts and hidden password entry;
-- configuration persists after removing the helper container;
-- watcher starts from the persistent configuration label;
-- the FusioN lane successfully runs under the multi-lane watcher.
-
-MuoN A10 factory reset was validated repeatedly on Ethernet 1/13 at 10G using the same endpoint, narrow payload, temporary-reachability workflow, cleanup, and independent lane state as FusioN.
-
-## Exact factory-reset API contract
+## Exact API contract
 
 Both device families use:
 
@@ -106,106 +46,100 @@ with exactly:
 {"config_reset": "system"}
 ```
 
-`src/mnip_test_automation/device.py` owns this request. `tests/test_device.py` locks the exact method, path, payload, and timeout. Do not send a full system representation or unrelated fields.
+`device.py` owns the request. Tests must continue to lock method, path, narrow payload, timeout, and HTTP status handling.
 
-## v0.6 configuration model
+## Network rules
 
-Runtime configuration is stored outside the image:
+- All onboarding ports must already be access ports in VLAN 1.
+- Switch VLAN IP must be a usable address in `192.168.39.0/24`.
+- The helper and config loader must enforce that subnet.
+- Temporary recovery assumes `/24`.
+- Duplicate enabled port names and port values are invalid.
+- If active lanes advertise the same LLDP management IP, skip reset and log the conflict.
+- General temporary-address conflict detection is not yet implemented.
+
+## Runtime configuration
+
+Configuration is stored outside the image:
 
 ```text
-Onyx Docker label: mnip-config
-Container mount:   /mnip-config
-Config file:       /mnip-config/config.yaml
+Onyx label: mnip-config
+Mount: /mnip-config
+File: /mnip-config/config.yaml
 ```
 
-The interactive helper displays the fixed settings, then asks for:
+The image contains only `config/config.example.yaml`. Real credentials are entered by `mnip-configure` and must never be committed or baked into the image.
 
-- Switch/VLAN IP
-- Switch username
-- Switch password
-- FusioN switchport
-- MuoN A10 switchport
+## Module boundaries
 
-Fixed v0.6 settings:
+- `app.py`: startup/composition only
+- `config.py`: select, load, and validate configuration
+- `configure.py`: interactive writer and clearly labeled examples
+- `device.py`: exact REST action
+- `models.py`: lane state
+- `switch.py`: Onyx CLI operations
+- `watcher.py`: lane orchestration, conflict guard, cleanup, and re-arm
 
-- VLAN 1
-- temporary prefix `/24`
-- 10-second polling
-- 60-second continuous-down re-arm
-- FusioN expected speed 25G
-- MuoN A10 expected speed 10G
-- factory-reset workflow and exact narrow API request
+Do not mix device REST logic into `switch.py`. Do not put Onyx parsing into `device.py`.
 
-Expected speed is descriptive only. v0.6 does not configure or validate switchport speed. Operators must prepare the ports.
+## Onyx command-mode rule
 
-## Shared-VLAN rules
+Operational instructions must state the prompt.
 
-All configured onboarding ports are expected to be access ports in VLAN 1.
+Most project commands run at:
 
-- Lane ports must be different; the helper and config loader reject duplicates.
-- Simultaneously connected devices must not use the same management IP.
-- Before processing a lane, the watcher checks other active lanes for the same LLDP management IP and skips reset on conflict.
-- This guard does not replace general address-conflict detection for the derived temporary IP.
+```text
+(config) #
+```
 
-## Architecture boundaries
+Reach it with:
 
-- `config.py`: select/load/validate runtime configuration.
-- `models.py`: immutable lane configuration plus independent mutable lane state.
-- `switch.py`: Onyx SSH, port status, LLDP, switch-side ping, and temporary VLAN address operations.
-- `device.py`: exact MN-IP factory-reset API request.
-- `watcher.py`: lane orchestration, conflict guard, cleanup, processed state, and re-arm.
-- `configure.py`: interactive persistent config writer.
-- `app.py`: composition and startup only.
+```text
+enable
+configure terminal
+```
 
-Do not place MN-IP REST logic in the switch adapter. Do not place Onyx CLI parsing in the device adapter.
+Container removal uses:
 
-## Onyx facts and pitfalls
+```text
+(config) # docker
+(config docker) # no start <container>
+(config docker) # exit
+```
 
-- The tested account is an Onyx CLI account, not a UNIX shell account.
-- `exec_command()` and remote UNIX commands are unsuitable; use `invoke_shell()`.
-- A new SSH session begins at `>` and configuration requires `enable` then `configure terminal`.
-- `terminal length 0` is rejected; current code uses `terminal length 999`.
-- Onyx `ping` is continuous and is stopped by sending Ctrl+C.
-- `ping <ip> count 2` is invalid on the tested release.
-- REST must run from the Onyx-hosted container. A temporary switch VLAN address does not give the Utility VM the same route.
-- Loaded Docker images and stored TAR files are separate.
-- Remove a loaded image with `docker remove image <name> <version>` from `(config) #`.
-- Remove a TAR with `image delete <filename>` from `(config) #`.
-- Remove a container with `docker` -> `no start <name>` -> `exit`.
-- If a command beginning with `docker` is rejected, check whether the prompt is already `(config docker) #` and run `exit` once.
+If a command beginning with `docker` is rejected, check whether the prompt is already `(config docker) #`.
 
-## Current limitations
+## Validated findings
 
-- Fixed sleeps and broad `recv()` calls remain.
-- Multiple SSH sessions are opened per polling cycle.
-- LLDP and CLI parsing remain regex/text based.
-- Temporary recovery assumes `/24` and adjacent `+1`, except `.254` uses `-1`.
-- No general ARP/address-conflict check for the derived temporary address.
-- Expected port speed is not validated or configured.
-- No durable processed state across container restart.
-- No structured operational log or supported log retrieval path.
-- No post-reset health/readiness verification.
-- `AutoAddPolicy` and password-based switch login remain prototype choices.
-- MuoN A10 factory reset was validated repeatedly on Ethernet 1/13 at 10G using the same narrow REST request as FusioN.
+- CLI-only account requires Paramiko `invoke_shell()`.
+- Fresh SSH session begins at `>`; configuration requires `enable` then `configure terminal`.
+- `terminal length 0` is rejected; current code uses `999`.
+- Onyx ping is continuous and is stopped with Ctrl+C.
+- LLDP discovery can succeed without Layer 3 reachability.
+- Onyx accepts an additional IPv4 address on the existing VLAN interface.
+- REST must run from the switch-hosted container for recovered reachability.
+- Temporary addresses are removed through `finally` cleanup.
+- Persistent Docker labels mount read/write and survive helper-container removal.
+- FusioN 25G and MuoN A10 10G workflows are hardware-validated under v0.6.
+- v1.0-rc1 third-lane FusioN 10G validation is pending.
 
-## Required next steps
+## v1.0 release gate
 
-1. Complete and record MuoN A10 hardware validation on the 10G lane.
-2. Update the proof-of-concept results with the actual MuoN observation.
-3. Improve prompt-aware Onyx command handling.
-4. Verify cleanup explicitly and treat cleanup failure as high severity.
-5. Add post-reset rediscovery/readiness checks.
-6. Decide how watcher logs/results are retrieved from Onyx.
-7. Only then proceed toward configuration, SDP provisioning, and media validation.
+Before final v1.0 merge/tag:
 
-## Definition of done
+- configuration loader enforces `192.168.39.0/24`;
+- three independent lanes are covered by tests;
+- all tests pass;
+- fresh deployment follows `docs/deployment.md`;
+- FusioN 25G, FusioN 10G, and MuoN A10 lanes succeed independently;
+- duplicate-IP guard is observed;
+- temporary addresses are removed;
+- independent 60-second re-arm behavior is verified;
+- documentation is updated from release-candidate to validated release status.
 
-A behavioral change is complete only when:
+## Repository rules
 
-- tests or a documented manual validation cover the behavior;
-- failure and cleanup paths are considered;
-- README, AGENT, and relevant focused docs are updated;
-- validated claims are separated from unvalidated implementation;
-- no secrets or generated artifacts are staged;
-- VM build and Onyx runtime assumptions are checked; and
-- Onyx command examples state the required prompt mode.
+- Never commit passwords, runtime config, private keys, `.env`, `.venv`, TAR files, caches, or logs containing sensitive data.
+- Run `git diff --check`, tests, secret review, and stale-reference checks before commit.
+- Keep historical evidence in `docs/validation-history.md`; do not duplicate project history across every document.
+- Do not claim hardware validation until observed and recorded.

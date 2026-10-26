@@ -1,4 +1,5 @@
 from getpass import getpass
+from ipaddress import IPv4Address, IPv4Network
 from pathlib import Path
 
 import yaml
@@ -6,28 +7,68 @@ import yaml
 
 CONFIG_PATH = Path("/mnip-config/config.yaml")
 
-DEFAULT_SWITCH_IP = "192.168.39.10"
-DEFAULT_FUSION_PORT = "1/25"
-DEFAULT_MUON_PORT = "1/13"
+REQUIRED_VLAN_SUBNET = IPv4Network("192.168.39.0/24")
+EXAMPLE_SWITCH_IP = "192.168.39.10"
+EXAMPLE_FUSION_25G_PORT = "1/1"
+EXAMPLE_FUSION_10G_PORT = "1/3"
+EXAMPLE_MUON_A10_PORT = "1/5"
 
 FIXED_VLAN = 1
 FIXED_PREFIX_LENGTH = 24
 FIXED_POLL_INTERVAL = 10
 FIXED_REARM_SECONDS = 60
-FIXED_FUSION_SPEED = "25G"
-FIXED_MUON_SPEED = "10G"
 FIXED_WORKFLOW = "factory_reset"
 
 
-def prompt_with_default(label: str, default: str) -> str:
-    value = input(f"{label} [{default}]: ").strip()
-    return value or default
+def prompt_with_example(label: str, example: str) -> str:
+    while True:
+        value = input(f"{label} [example: {example}]: ").strip()
+
+        if value:
+            return value
+
+        print("Enter the actual value. The displayed value is an example only.")
+
+
+def prompt_switch_ip() -> str:
+    while True:
+        value = prompt_with_example(
+            "Switch VLAN IP within 192.168.39.0/24",
+            EXAMPLE_SWITCH_IP,
+        )
+
+        try:
+            address = IPv4Address(value)
+        except ValueError:
+            print("Enter a valid IPv4 address.")
+            continue
+
+        if address not in REQUIRED_VLAN_SUBNET:
+            print(
+                "The switch VLAN IP must be within "
+                "192.168.39.0/24."
+            )
+            continue
+
+        if address in {
+            REQUIRED_VLAN_SUBNET.network_address,
+            REQUIRED_VLAN_SUBNET.broadcast_address,
+        }:
+            print("Enter a usable host address within the subnet.")
+            continue
+
+        return str(address)
 
 
 def main() -> None:
     print()
-    print("MN-IP Test Automation configuration")
-    print("===================================")
+    print("MN-IP Test Automation v1.0 configuration")
+    print("=========================================")
+    print()
+    print("Network requirement:")
+    print("- All onboarding ports must already be access ports in VLAN 1.")
+    print("- The switch VLAN IP must be within 192.168.39.0/24.")
+    print("- 192.168.39.10 is an example only.")
     print()
     print("Fixed settings:")
     print(f"- Shared access VLAN: VLAN {FIXED_VLAN}")
@@ -37,38 +78,56 @@ def main() -> None:
         "- Re-arm after continuous link-down: "
         f"{FIXED_REARM_SECONDS} seconds"
     )
-    print(f"- FusioN expected port speed: {FIXED_FUSION_SPEED}")
-    print(f"- MuoN A10 expected port speed: {FIXED_MUON_SPEED}")
+    print("- FusioN 25G lane expected speed: 25G")
+    print("- FusioN 10G lane expected speed: 10G")
+    print("- MuoN A10 lane expected speed: 10G")
     print("- Device workflow: factory reset")
     print("- REST path: /emsfp/node/v1/self/system")
     print('- REST payload: {"config_reset": "system"}')
     print()
-    print("All configured switchports must already be access ports")
-    print(f"in the same VLAN, currently fixed to VLAN {FIXED_VLAN}.")
+    print("Example switchports:")
+    print(f"- FusioN 25G: {EXAMPLE_FUSION_25G_PORT}")
+    print(f"- FusioN 10G: {EXAMPLE_FUSION_10G_PORT}")
+    print(f"- MuoN A10 10G: {EXAMPLE_MUON_A10_PORT}")
     print()
-    print("Devices connected simultaneously must not use duplicate")
-    print("management IP addresses on the shared VLAN.")
+    print("The displayed IP and switchports are examples only.")
+    print("Enter the actual values for the target switch.")
     print()
 
-    switch_ip = prompt_with_default(
-        "Switch/VLAN IP",
-        DEFAULT_SWITCH_IP,
-    )
+    switch_ip = prompt_switch_ip()
     username = input("Switch username: ").strip()
+
+    if not username:
+        raise ValueError("Switch username must not be empty")
+
     password = getpass("Switch password: ")
 
-    fusion_port = prompt_with_default(
-        "FusioN switchport",
-        DEFAULT_FUSION_PORT,
+    if not password:
+        raise ValueError("Switch password must not be empty")
+
+    fusion_25g_port = prompt_with_example(
+        "FusioN 25G switchport",
+        EXAMPLE_FUSION_25G_PORT,
     )
-    muon_port = prompt_with_default(
-        "MuoN A10 switchport",
-        DEFAULT_MUON_PORT,
+    fusion_10g_port = prompt_with_example(
+        "FusioN 10G switchport",
+        EXAMPLE_FUSION_10G_PORT,
+    )
+    muon_a10_port = prompt_with_example(
+        "MuoN A10 10G switchport",
+        EXAMPLE_MUON_A10_PORT,
     )
 
-    if fusion_port == muon_port:
+    ports = [
+        fusion_25g_port,
+        fusion_10g_port,
+        muon_a10_port,
+    ]
+
+    if len(ports) != len(set(ports)):
         raise ValueError(
-            "FusioN and MuoN A10 must use different switchports"
+            "FusioN 25G, FusioN 10G, and MuoN A10 "
+            "must use different switchports"
         )
 
     config = {
@@ -87,18 +146,26 @@ def main() -> None:
         },
         "lanes": [
             {
-                "name": "fusion-reset",
+                "name": "fusion-25g-reset",
                 "enabled": True,
-                "port": fusion_port,
-                "expected_speed": FIXED_FUSION_SPEED,
+                "port": fusion_25g_port,
+                "expected_speed": "25G",
+                "device_family": "fusion",
+                "workflow": FIXED_WORKFLOW,
+            },
+            {
+                "name": "fusion-10g-reset",
+                "enabled": True,
+                "port": fusion_10g_port,
+                "expected_speed": "10G",
                 "device_family": "fusion",
                 "workflow": FIXED_WORKFLOW,
             },
             {
                 "name": "muon-a10-reset",
                 "enabled": True,
-                "port": muon_port,
-                "expected_speed": FIXED_MUON_SPEED,
+                "port": muon_a10_port,
+                "expected_speed": "10G",
                 "device_family": "muon-a10",
                 "workflow": FIXED_WORKFLOW,
             },
