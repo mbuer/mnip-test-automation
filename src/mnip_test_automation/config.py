@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from ipaddress import IPv4Address, IPv4Network
 from pathlib import Path
 import os
 
@@ -7,6 +8,8 @@ import yaml
 
 DEFAULT_CONFIG_PATH = Path("/mnip-config/config.yaml")
 LOCAL_CONFIG_PATH = Path("config/config.yaml")
+
+REQUIRED_VLAN_SUBNET = IPv4Network("192.168.39.0/24")
 
 
 @dataclass(frozen=True)
@@ -92,9 +95,24 @@ def load_config(path: Path | None = None) -> AppConfig:
     if len(lane_ports) != len(set(lane_ports)):
         raise ValueError("Enabled lane ports must be unique")
 
+    switch_host = IPv4Address(str(raw["switch"]["host"]))
+
+    if switch_host not in REQUIRED_VLAN_SUBNET:
+        raise ValueError(
+            "Switch VLAN IP must be within 192.168.39.0/24"
+        )
+
+    if switch_host in {
+        REQUIRED_VLAN_SUBNET.network_address,
+        REQUIRED_VLAN_SUBNET.broadcast_address,
+    }:
+        raise ValueError(
+            "Switch VLAN IP must be a usable host address"
+        )
+
     return AppConfig(
         switch=SwitchConfig(
-            host=str(raw["switch"]["host"]),
+            host=str(switch_host),
             username=str(raw["switch"]["username"]),
             password=str(raw["switch"]["password"]),
         ),

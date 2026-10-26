@@ -1,24 +1,24 @@
+# Runtime configuration and secrets
+config/config.yaml
+.env
+.env.*
+*.key
+*.pem
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Generated deployment artifacts and logs
 *.tar
 *.tar.gz
 *.tbz
-__pycache__/
-.env
-config.local.yaml
+*.log
 
-
-# Local Python environment
-.venv/
-**/.venv/
-__pycache__/
-**/__pycache__/
-*.pyc
-
-# Local development backups
+# Local backups and review bundles
 *_backup.py
 *_working.py
-
-# Generated Docker artifacts
-*.tar
-
-# Local runtime configuration
-config/config.yaml
+repo-review*.txt
+.migration-backups/
